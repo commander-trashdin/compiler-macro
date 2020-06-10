@@ -93,4 +93,28 @@ Defined inferrers can be accessed with FIND-INFERRER."
   (declare (ignore tag result))
   'nil)
 
+(define-inferrer progn (&rest forms)
+  (form-type (first (last forms))))
+
+(define-inferrer prog1 (result &body body)
+  (declare (ignorable body))
+  (form-type result))
+
+(define-inferrer prog2 (form1 result &body body)
+  (declare (ignorable body form1))
+  (form-type result))
+
+(define-inferrer let (bindings &body body)
+  (declare (ignorable bindings))
+  (form-type `(progn ,@body)))
+
+(define-inferrer tagbody (&rest statements)
+  (declare (ignore statements))
+  nil)
+
+
+;;TODO Make inferer for block as well. To make it precise I smh need a decent codewalks, that would exclude redundand
+;;bracnhes, and then combine all return-from with that block name into or type. Or maybe forget those branches..
+;;Not sure
+
 #+sbcl (setf (find-inferrer 'sb-ext:truly-the) (find-inferrer 'the))
