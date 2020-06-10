@@ -93,28 +93,53 @@ Defined inferrers can be accessed with FIND-INFERRER."
   (declare (ignore tag result))
   'nil)
 
-(define-inferrer progn (&rest forms)
-  (form-type (first (last forms))))
+(define-inferrer progn (&rest forms &environment env)
+  (form-type (first (last forms)) env))
 
-(define-inferrer prog1 (result &body body)
-  (declare (ignorable body))
-  (form-type result))
+(define-inferrer locally (&body body &environment env)
+  (form-type (first (last body)) env))
 
-(define-inferrer prog2 (form1 result &body body)
-  (declare (ignorable body form1))
-  (form-type result))
+(define-inferrer prog1 (result &body body &environment env)
+  (declare (ignore body))
+  (form-type result env))
 
-(define-inferrer let (bindings &body body)
-  (declare (ignorable bindings))
-  (form-type `(progn ,@body)))
+(define-inferrer prog2 (form1 result &body body &environment env)
+  (declare (ignore body form1))
+  (form-type result env))
+
+(define-inferrer let (bindings &body body &environment env) ;; env seem to have no effect here
+  (declare (ignore bindings))
+  (form-type `(progn ,@body) env))
+
+(define-inferrer let* (bindings &body body &environment env)
+  (declare (ignore bindings))
+  (form-type `(progn ,@body) env))
+
+(define-inferrer symbol-macrolet (macrobindings &body body &environment env)
+  (declare (ignore macrobindings))
+  (form-type `(progn ,@body) env))
+
+(define-inferrer flet (definitions &body body &environment env)
+  (declare (ignore definitions))
+  (form-type `(progn ,@body) env))
+
+(define-inferrer lables (definitions &body body &environment env)
+  (declare (ignore definitions))
+  (form-type `(progn ,@body) env))
+
+(define-inferrer macrolet (definitions &body body &environment env)
+  (declare (ignore definitions))
+  (form-type `(progn ,@body) env))
 
 (define-inferrer tagbody (&rest statements)
   (declare (ignore statements))
-  nil)
+  `null)
 
-
-;;TODO Make inferer for block as well. To make it precise I smh need a decent codewalks, that would exclude redundand
-;;bracnhes, and then combine all return-from with that block name into or type. Or maybe forget those branches..
-;;Not sure
+(define-inferrer if (test then &optional else &environment env)
+  (if (constantp test env)
+      (if (constant-form-value test env)
+          (form-type then env)
+          (form-type else env))
+     `(or ,(form-type then env) ,(if else (form-type else env) 'null))))
 
 #+sbcl (setf (find-inferrer 'sb-ext:truly-the) (find-inferrer 'the))
